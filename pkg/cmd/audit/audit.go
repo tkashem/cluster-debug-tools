@@ -222,21 +222,31 @@ func (o *AuditOptions) Run() error {
 		filters = append(filters, &FilterByAfter{After: t})
 	}
 	if len(o.resources) > 0 {
-		resources := map[schema.GroupResource]bool{}
-		for _, resource := range o.resources {
-			parts := strings.Split(resource, ".")
-			gr := schema.GroupResource{}
-			gr.Resource = parts[0]
-			if len(parts) >= 2 {
-				gr.Group = strings.Join(parts[1:], ".")
+		switch {
+		case len(o.resources) == 1 && o.resources[0] == "*":
+			filters = append(filters, FilterByAnyResources{})
+		default:
+			resources := map[schema.GroupResource]bool{}
+			for _, resource := range o.resources {
+				parts := strings.Split(resource, ".")
+				gr := schema.GroupResource{}
+				gr.Resource = parts[0]
+				if len(parts) >= 2 {
+					gr.Group = strings.Join(parts[1:], ".")
+				}
+				resources[gr] = true
 			}
-			resources[gr] = true
-		}
 
-		filters = append(filters, &FilterByResources{Resources: resources})
+			filters = append(filters, &FilterByResources{Resources: resources})
+		}
 	}
 	if len(o.subresources) > 0 {
-		filters = append(filters, &FilterBySubresources{Subresources: sets.NewString(o.subresources...)})
+		switch {
+		case len(o.subresources) == 1 && o.subresources[0] == "-*":
+			filters = append(filters, FilterByNoSubresource{})
+		default:
+			filters = append(filters, &FilterBySubresources{Subresources: sets.NewString(o.subresources...)})
+		}
 	}
 	if len(o.users) > 0 {
 		filters = append(filters, &FilterByUser{Users: sets.NewString(o.users...)})
