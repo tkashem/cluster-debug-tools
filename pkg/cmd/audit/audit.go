@@ -53,6 +53,7 @@ type AuditOptions struct {
 	failedOnly        bool
 	httpStatusCodes   []int32
 	output            string
+	to                string
 	topBy             string
 	beforeString      string
 	afterString       string
@@ -99,6 +100,7 @@ func NewCmdAudit(parentName string, streams genericclioptions.IOStreams) *cobra.
 
 	cmd.Flags().StringSliceVarP(&o.filenames, "filename", "f", o.filenames, "Search for audit logs that contains specified URI")
 	cmd.Flags().StringVarP(&o.output, "output", "o", o.output, "Choose your output format")
+	cmd.Flags().StringVar(&o.to, "to", o.to, "Choose the directory where output files will be created, if not provided output files will be written to the tmp folder")
 	cmd.Flags().StringSliceVar(&o.uids, "uid", o.uids, "Only match specific UIDs")
 	cmd.Flags().StringSliceVar(&o.verbs, "verb", o.verbs, "Filter result of search to only contain the specified verb (eg. 'update', 'get', etc..)")
 	cmd.Flags().StringSliceVar(&o.resources, "resource", o.resources, "Filter result of search to only contain the specified resource.)")
@@ -140,6 +142,7 @@ func (o *AuditOptions) Validate() error {
 	case o.output == "wide":
 	case o.output == "json":
 	case o.output == "stats":
+	case o.output == "latency-dist":
 	default:
 		return fmt.Errorf("unsupported output format: top=N, wide, json")
 	}
@@ -314,6 +317,11 @@ func (o *AuditOptions) Run() error {
 		}
 	case o.output == "stats":
 		PrintLatencyTrackersStatsAuditEvents(o.Out, events)
+	case o.output == "latency-dist":
+		writer := plotWriter{o.to}
+		if err := writer.Write(events); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unsupported output format")
 	}
